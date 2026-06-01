@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Hispania · Control de Efectivo</title>
+  <meta name="theme-color" content="#1a7a4a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hispania Cash">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#e8edf0;min-height:100vh;display:flex;justify-content:center}
+    .app{width:100%;max-width:440px;background:#fff;min-height:100vh}
+    .header{background:#1a7a4a;padding:14px 20px 30px;text-align:center}
+    .header-date{font-size:12px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .header-label{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:4px}
+    .header-amount{font-size:48px;font-weight:700;color:#fff;letter-spacing:-2px;line-height:1.1}
+    .header-badge{display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:11px;padding:3px 14px;border-radius:20px;margin-top:6px}
+    .sync-bar{background:#155f3a;padding:6px 16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:rgba(255,255,255,.9);min-height:30px}
+    .sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .sync-dot.ok{background:#4ade80}
+    .sync-dot.pending{background:#fbbf24;animation:pulse 1s infinite}
+    .sync-dot.error{background:#f87171}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .setup-banner{margin:12px 16px;background:#fff3cd;border:1.5px solid #ffc107;border-radius:12px;padding:12px 14px}
+    .setup-banner h3{font-size:13px;color:#856404;margin-bottom:6px}
+    .setup-banner p{font-size:12px;color:#856404;margin-bottom:8px;line-height:1.5}
+    .setup-input{width:100%;border:1px solid #ffc107;border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;outline:none;margin-bottom:8px;background:#fffdf0}
+    .setup-btn{width:100%;background:#1a7a4a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+    .action-row{display:flex;gap:12px;padding:0 20px;margin-top:-20px;margin-bottom:16px}
+    .btn-action{flex:1;border-radius:16px;padding:14px 0 10px;display:flex;flex-direction:column;align-items:center;gap:6px;border:none;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .btn-action:active{transform:scale(.97)}
+    .btn-income{background:#eaf7f1}
+    .btn-expense{background:#fcecea}
+    .btn-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+    .btn-income .btn-circle{background:#1a7a4a;color:#fff}
+    .btn-expense .btn-circle{background:#c0392b;color:#fff}
+    .btn-action span{font-size:12px;font-weight:700}
+    .btn-income span{color:#0f6e40}
+    .btn-expense span{color:#a32d2d}
+    .input-panel{margin:0 16px 16px;border-radius:14px;padding:14px;border:1.5px solid #ddd;display:none}
+    .input-panel.visible{display:block}
+    .input-panel.income-panel{border-color:#9FE1CB;background:#f4fdf9}
+    .input-panel.expense-panel{border-color:#f5b7b7;background:#fdf5f5}
+    .input-panel-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;font-weight:700}
+    .input-panel input{width:100%;border:1px solid #ddd;border-radius:9px;padding:11px 13px;font-size:15px;font-family:inherit;background:#fff;margin-bottom:8px;outline:none}
+    .input-panel input:focus{border-color:#1a7a4a}
+    .btn-confirm{width:100%;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff}
+    .date-nav{display:flex;align-items:center;background:#fff;border:1px solid #ddd;border-radius:9px;padding:8px 10px;margin-bottom:8px}
+    .date-nav-label{font-size:13px;font-weight:700;color:#333;text-align:center;flex:1}
+    .date-nav-btn{background:none;border:none;cursor:pointer;font-size:22px;color:#888;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:7px}
+    .date-nav-btn:active{background:#f0f0f0}
+    .divider{height:1px;background:#f0f0f0;margin:0 20px 14px}
+    .section-title{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.6px;padding:0 20px;margin-bottom:8px}
+    .movements{padding:0 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
+    .mov-item{display:flex;align-items:center;gap:10px;background:#f8f9fa;border-radius:11px;padding:9px 10px}
+    .mov-dot{width:33px;height:33px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:700}
+    .mov-dot.income{background:#eaf7f1;color:#0f6e40}
+    .mov-dot.expense{background:#fcecea;color:#c0392b}
+    .mov-info{flex:1;min-width:0}
+    .mov-desc{font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mov-date{font-size:11px;color:#aaa;margin-top:1px}
+    .mov-amount{font-size:14px;font-weight:700;flex-shrink:0}
+    .mov-amount.income{color:#0f6e40}
+    .mov-amount.expense{color:#c0392b}
+    .btn-delete{background:none;border:none;cursor:pointer;color:#ccc;font-size:20px;padding:0 3px;flex-shrink:0;line-height:1}
+    .btn-delete:hover{color:#c0392b}
+    .empty-state{text-align:center;color:#ccc;font-size:13px;padding:20px 0}
+    .calendar{padding:0 16px;margin-bottom:14px}
+    .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .cal-title{font-size:14px;font-weight:700;color:#333}
+    .cal-nav{background:#f2f2f2;border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+    .cal-day-name{font-size:10px;color:#bbb;padding:4px 0;font-weight:700}
+    .cal-day{font-size:12px;padding:6px 2px 10px;border-radius:8px;color:#444;cursor:pointer;position:relative;min-height:32px}
+    .cal-day:hover{background:#f2f2f2}
+    .cal-day.today{background:#1a7a4a;color:#fff;font-weight:700}
+    .cal-day.empty{cursor:default;color:transparent}
+    .cal-day.empty:hover{background:none}
+    .dot-row{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:2px}
+    .dot{width:4px;height:4px;border-radius:50%}
+    .dot.income{background:#0f6e40}
+    .dot.expense{background:#c0392b}
+    .export-section{padding:0 16px 28px}
+    .export-filter{display:flex;gap:8px;margin-bottom:10px}
+    .filter-btn{flex:1;padding:9px;border-radius:9px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;font-weight:700;color:#888;cursor:pointer;font-family:inherit}
+    .filter-btn.active{background:#1a7a4a;color:#fff;border-color:#1a7a4a}
+    .month-selector{width:100%;border:1.5px solid #e0e0e0;border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:10px;display:none;outline:none}
+    .month-selector.visible{display:block}
+    .export-buttons{display:flex;gap:10px}
+    .btn-export{flex:1;border-radius:11px;padding:13px 0;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+    .btn-excel{background:#1a7a4a;color:#fff}
+    .btn-pdf{background:#c0392b;color:#fff}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-end;justify-content:center}
+    .modal-overlay.visible{display:flex}
+    .modal{background:#fff;border-radius:22px 22px 0 0;padding:20px 20px 34px;width:100%;max-width:440px}
+    .modal-handle{width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 16px}
+    .modal-title{font-size:16px;font-weight:700;color:#333;margin-bottom:2px}
+    .modal-subtitle{font-size:12px;color:#bbb;margin-bottom:14px}
+    .modal-movements{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:180px;overflow-y:auto}
+    .modal-add-title{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .modal input{width:100%;border:1px solid #ddd;border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px;outline:none}
+    .modal input:focus{border-color:#1a7a4a}
+    .modal-type-btns{display:flex;gap:8px;margin-bottom:9px}
+    .type-btn{flex:1;padding:9px;border-radius:9px;border:1.5px solid #e0e0e0;background:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+    .type-btn.sel-income{background:#eaf7f1;color:#0f6e40;border-color:#9FE1CB}
+    .type-btn.sel-expense{background:#fcecea;color:#c0392b;border-color:#f5b7b7}
+    .modal-actions{display:flex;gap:8px;margin-top:4px}
+    .btn-modal-cancel{flex:1;background:#f2f2f2;color:#666;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-modal-add{flex:2;background:#1a7a4a;color:#fff;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-date" id="headerDate"></div>
+    <div class="header-label">Efectivo disponible</div>
+    <div class="header-amount" id="headerAmount">0,00 €</div>
+    <div class="header-badge">Saldo actual</div>
+  </div>
+
+  <div class="sync-bar" id="syncBar">
+    <div class="sync-dot pending" id="syncDot"></div>
+    <span id="syncMsg">Configurando sincronización...</span>
+  </div>
+
+  <!-- SETUP BANNER (visible hasta configurar) -->
+  <div class="setup-banner" id="setupBanner">
+    <h3>&#9889; Conectar con Google Drive</h3>
+    <p>Pega aquí la URL de tu Google Apps Script para activar la copia automática en la nube:</p>
+    <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..." />
+    <button class="setup-btn" onclick="saveScriptUrl()">Conectar y sincronizar</button>
+  </div>
+
+  <div class="action-row">
+    <button class="btn-action btn-income" onclick="togglePanel('income')">
+      <div class="btn-circle">+</div><span>Ingreso</span>
+    </button>
+    <button class="btn-action btn-expense" onclick="togglePanel('expense')">
+      <div class="btn-circle">&#8722;</div><span>Gasto</span>
+    </button>
+  </div>
+
+  <div class="input-panel" id="inputPanel">
+    <div class="input-panel-title" id="panelTitle"></div>
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="changePanelDate(-1)">&#8249;</button>
+      <div class="date-nav-label" id="panelDateLabel"></div>
+      <button class="date-nav-btn" onclick="changePanelDate(1)">&#8250;</button>
+    </div>
+    <input type="number" id="inputAmount" placeholder="Importe en euros (ej: 50.00)" min="0" step="0.01" />
+    <input type="text" id="inputDesc" placeholder="Descripcion del movimiento" />
+    <button class="btn-confirm" id="btnConfirm" onclick="addMovement()">Añadir</button>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-title">Ultimos movimientos</div>
+  <div class="movements" id="movementsList"></div>
+  <div class="divider"></div>
+
+  <div class="section-title">Calendario</div>
+  <div class="calendar">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="export-section">
+    <div class="section-title" style="padding:0;margin-bottom:10px">Exportar</div>
+    <div class="export-filter">
+      <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">Todo</button>
+      <button class="filter-btn" id="filterMonth" onclick="setFilter('month')">Por mes</button>
+    </div>
+    <select class="month-selector" id="monthSelector"></select>
+    <div class="export-buttons">
+      <button class="btn-export btn-excel" onclick="exportExcel()">&#9998; Excel</button>
+      <button class="btn-export btn-pdf" onclick="exportPDF()">&#128196; PDF</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="dayModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalDateTitle"></div>
+    <div class="modal-subtitle">Movimientos de este dia</div>
+    <div class="modal-movements" id="modalMovements"></div>
+    <div class="modal-add-title">Añadir movimiento</div>
+    <div class="modal-type-btns">
+      <button class="type-btn sel-income" id="modalTypeIncome" onclick="selectModalType('income')">+ Ingreso</button>
+      <button class="type-btn" id="modalTypeExpense" onclick="selectModalType('expense')">&#8722; Gasto</button>
+    </div>
+    <input type="number" id="modalAmount" placeholder="Importe en euros" min="0" step="0.01" />
+    <input type="text" id="modalDesc" placeholder="Descripcion" />
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cerrar</button>
+      <button class="btn-modal-add" onclick="addModalMovement()">Añadir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+var SCRIPT_URL_KEY = 'hispania_script_url';
+var DATA_KEY = 'hispania_cash';
+
+var scriptUrl = localStorage.getItem(SCRIPT_URL_KEY) || '';
+var movements = JSON.parse(localStorage.getItem(DATA_KEY) || '[]');
+var currentPanelType = null;
+var panelDate = null;
+var calYear, calMonth;
+var modalDate = null;
+var modalType = 'income';
+var exportFilter = 'all';
+var syncTimer = null;
+var isSyncing = false;
+
+var today = new Date();
+calYear = today.getFullYear();
+calMonth = today.getMonth();
+
+var MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+              'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ── SYNC STATUS ───────────────────────────────────────────────────
+function setSyncStatus(state, msg) {
+  var dot = document.getElementById('syncDot');
+  var txt = document.getElementById('syncMsg');
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = msg;
+}
+
+// ── SETUP ─────────────────────────────────────────────────────────
+function saveScriptUrl() {
+  var url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url || !url.includes('script.google.com')) {
+    alert('Pega una URL valida de Google Apps Script');
+    return;
+  }
+  scriptUrl = url;
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+  document.getElementById('setupBanner').style.display = 'none';
+  setSyncStatus('pending', 'Conectando con Google Drive...');
+  loadFromDrive();
+}
+
+function checkSetup() {
+  if (scriptUrl) {
+    document.getElementById('setupBanner').style.display = 'none';
+    loadFromDrive();
+  } else {
+    document.getElementById('setupBanner').style.display = 'block';
+    setSyncStatus('error', 'Sin conexion a Drive - configura el script');
+  }
+}
+
+// ── DRIVE SYNC ────────────────────────────────────────────────────
+function loadFromDrive() {
+  if (!scriptUrl) return;
+  setSyncStatus('pending', 'Cargando datos de Drive...');
+  fetch(scriptUrl + '?action=get', { method: 'GET', redirect: 'follow' })
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      try {
+        var data = JSON.parse(text);
+        if (Array.isArray(data) && data.length > 0) {
+          // Merge: keep local + remote, remove duplicates by id
+          var allIds = new Set(movements.map(function(m) { return m.id; }));
+          data.forEach(function(m) {
+            if (!allIds.has(m.id)) { movements.push(m); allIds.add(m.id); }
+          });
+          save();
+        }
+        setSyncStatus('ok', 'Sincronizado con Drive');
+        renderAll();
+      } catch(e) {
+        setSyncStatus('ok', 'Drive conectado');
+        renderAll();
+      }
+    })
+    .catch(function(e) {
+      setSyncStatus('error', 'Sin conexion - datos guardados localmente');
+      renderAll();
+    });
+}
+
+function saveToDrive() {
+  if (!scriptUrl) return;
+  if (isSyncing) return;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(function() {
+    isSyncing = true;
+    setSyncStatus('pending', 'Guardando en Drive...');
+    var body = JSON.stringify(movements);
+    fetch(scriptUrl + '?action=set', {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: body
+    })
+    .then(function(r) { return r.text(); })
+    .then(function() {
+      isSyncing = false;
+      setSyncStatus('ok', 'Guardado en Drive ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}));
+    })
+    .catch(function() {
+      isSyncing = false;
+      setSyncStatus('error', 'Error al guardar en Drive - datos en local');
+    });
+  }, 1500);
+}
+
+// ── SAVE (local + drive) ──────────────────────────────────────────
+function save() {
+  localStorage.setItem(DATA_KEY, JSON.stringify(movements));
+  saveToDrive();
+}
+
+// ── FORMAT ────────────────────────────────────────────────────────
+function fmtEur(n) {
+  return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' \u20AC';
+}
+function fmtDate(s) {
+  var d = new Date(s + 'T12:00:00');
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+}
+function fmtDateLong(s) {
+  var d = new Date(s + 'T12:00:00');
+  return d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+function todayStr() { return today.toISOString().split('T')[0]; }
+function dateToStr(d) { return d.toISOString().split('T')[0]; }
+function strToDate(s) { var p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getTotal(list) { return list.reduce(function(s,m){ return s+(m.type==='income'?m.amount:-m.amount); },0); }
+
+// ── HEADER ────────────────────────────────────────────────────────
+function renderHeader() {
+  document.getElementById('headerDate').textContent =
+    today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('headerAmount').textContent = fmtEur(getTotal(movements));
+}
+
+// ── MOVEMENTS ─────────────────────────────────────────────────────
+function renderMovements() {
+  var el = document.getElementById('movementsList');
+  if (!movements.length) { el.innerHTML = '<div class="empty-state">Sin movimientos aun.</div>'; return; }
+  var sorted = movements.slice().sort(function(a,b){return b.id-a.id;});
+  el.innerHTML = sorted.map(function(m) {
+    return '<div class="mov-item"><div class="mov-dot '+m.type+'">'+(m.type==='income'?'&#8595;':'&#8593;')+'</div><div class="mov-info"><div class="mov-desc">'+escHtml(m.description)+'</div><div class="mov-date">'+fmtDate(m.date)+'</div></div><div class="mov-amount '+m.type+'">'+(m.type==='income'?'+':'&#8722;')+fmtEur(m.amount)+'</div><button class="btn-delete" onclick="deleteMovement('+m.id+')">&times;</button></div>';
+  }).join('');
+}
+
+function deleteMovement(id) {
+  if (!confirm('Eliminar este movimiento?')) return;
+  movements = movements.filter(function(m){return m.id!==id;});
+  save(); renderAll();
+}
+
+// ── DATE NAV ──────────────────────────────────────────────────────
+function updatePanelDateLabel() {
+  var d = strToDate(panelDate);
+  var isToday = panelDate===todayStr();
+  var label = isToday
+    ? 'Hoy \u00B7 '+d.toLocaleDateString('es-ES',{day:'numeric',month:'long'})
+    : d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('panelDateLabel').textContent = label.charAt(0).toUpperCase()+label.slice(1);
+}
+function changePanelDate(dir) {
+  var d = strToDate(panelDate); d.setDate(d.getDate()+dir);
+  panelDate = dateToStr(d); updatePanelDateLabel();
+}
+
+// ── INPUT PANEL ───────────────────────────────────────────────────
+function togglePanel(type) {
+  var panel = document.getElementById('inputPanel');
+  var isOpen = panel.classList.contains('visible');
+  if (isOpen && currentPanelType===type) { panel.classList.remove('visible'); currentPanelType=null; return; }
+  currentPanelType = type; panelDate = todayStr(); updatePanelDateLabel();
+  panel.className = 'input-panel visible '+(type==='income'?'income-panel':'expense-panel');
+  var title = document.getElementById('panelTitle');
+  title.textContent = type==='income'?'Nuevo ingreso':'Nuevo gasto';
+  title.style.color = type==='income'?'#0f6e40':'#c0392b';
+  document.getElementById('btnConfirm').style.background = type==='income'?'#1a7a4a':'#c0392b';
+  document.getElementById('inputAmount').value = '';
+  document.getElementById('inputDesc').value = '';
+  document.getElementById('inputAmount').focus();
+}
+
+function addMovement() {
+  var amount = parseFloat(document.getElementById('inputAmount').value);
+  var desc = document.getElementById('inputDesc').value.trim() || 'Sin descripcion';
+  if (!amount || amount<=0) { alert('Introduce un importe valido'); return; }
+  movements.push({id:Date.now(), date:panelDate||todayStr(), type:currentPanelType, amount:amount, description:desc});
+  save(); document.getElementById('inputPanel').classList.remove('visible'); currentPanelType=null; renderAll();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key==='Enter') {
+    if (document.getElementById('inputPanel').classList.contains('visible')) addMovement();
+    if (document.getElementById('dayModal').classList.contains('visible')) addModalMovement();
+  }
+});
+
+// ── CALENDAR ──────────────────────────────────────────────────────
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = MONTHS[calMonth]+' '+calYear;
+  var firstDay = new Date(calYear,calMonth,1).getDay();
+  var daysInMonth = new Date(calYear,calMonth+1,0).getDate();
+  var startOffset = firstDay===0?6:firstDay-1;
+  var dayMap = {};
+  movements.forEach(function(m) {
+    var d = new Date(m.date+'T12:00:00');
+    if (d.getFullYear()===calYear && d.getMonth()===calMonth) {
+      var day = d.getDate();
+      if (!dayMap[day]) dayMap[day] = {};
+      dayMap[day][m.type] = true;
+    }
+  });
+  var names = ['L','M','X','J','V','S','D'];
+  var html = names.map(function(n){return '<div class="cal-day-name">'+n+'</div>';}).join('');
+  for (var i=0;i<startOffset;i++) html+='<div class="cal-day empty"></div>';
+  var td=today.getDate(),tm=today.getMonth(),ty=today.getFullYear();
+  for (var d=1;d<=daysInMonth;d++) {
+    var isToday = d===td&&calMonth===tm&&calYear===ty;
+    var types = dayMap[d]||{};
+    var dots = Object.keys(types).map(function(t){return '<div class="dot '+t+'"></div>';}).join('');
+    var ds = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    html+='<div class="cal-day'+(isToday?' today':'')+'" onclick="openDayModal(\''+ds+'\')">'+d+(dots?'<div class="dot-row">'+dots+'</div>':'')+'</div>';
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+function changeMonth(dir) {
+  calMonth+=dir;
+  if (calMonth<0){calMonth=11;calYear--;}
+  if (calMonth>11){calMonth=0;calYear++;}
+  renderCalendar();
+}
+
+// ── DAY MODAL ─────────────────────────────────────────────────────
+function openDayModal(ds) {
+  modalDate=ds; modalType='income';
+  document.getElementById('modalDateTitle').textContent=fmtDateLong(ds);
+  document.getElementById('modalAmount').value='';
+  document.getElementById('modalDesc').value='';
+  selectModalType('income'); renderModalMovements();
+  document.getElementById('dayModal').classList.add('visible');
+}
+function renderModalMovements() {
+  var dayMovs = movements.filter(function(m){return m.date===modalDate;}).sort(function(a,b){return b.id-a.id;});
+  var el = document.getElementById('modalMovements');
+  if (!dayMovs.length){el.innerHTML='<div class="empty-state" style="padding:6px 0">Sin movimientos este dia</div>';return;}
+  el.innerHTML = dayMovs.map(function(m){
+    return '<div class="mov-item"><div class="mov-dot '+m.type+'">'+(m.type==='income'?'&#8595;':'&#8593;')+'</div><div class="mov-info"><div class="mov-desc">'+escHtml(m.description)+'</div></div><div class="mov-amount '+m.type+'">'+(m.type==='income'?'+':'&#8722;')+fmtEur(m.amount)+'</div><button class="btn-delete" onclick="deleteModalMovement('+m.id+')">&times;</button></div>';
+  }).join('');
+}
+function deleteModalMovement(id){movements=movements.filter(function(m){return m.id!==id;});save();renderModalMovements();renderAll();}
+function selectModalType(type){
+  modalType=type;
+  document.getElementById('modalTypeIncome').className='type-btn'+(type==='income'?' sel-income':'');
+  document.getElementById('modalTypeExpense').className='type-btn'+(type==='expense'?' sel-expense':'');
+}
+function addModalMovement(){
+  var amount=parseFloat(document.getElementById('modalAmount').value);
+  var desc=document.getElementById('modalDesc').value.trim()||'Sin descripcion';
+  if(!amount||amount<=0){alert('Introduce un importe valido');return;}
+  movements.push({id:Date.now(),date:modalDate,type:modalType,amount:amount,description:desc});
+  save();document.getElementById('modalAmount').value='';document.getElementById('modalDesc').value='';
+  renderModalMovements();renderAll();
+}
+function closeModal(){document.getElementById('dayModal').classList.remove('visible');}
+document.getElementById('dayModal').addEventListener('click',function(e){if(e.target===e.currentTarget)closeModal();});
+
+// ── EXPORT FILTER ─────────────────────────────────────────────────
+function setFilter(f){
+  exportFilter=f;
+  document.getElementById('filterAll').className='filter-btn'+(f==='all'?' active':'');
+  document.getElementById('filterMonth').className='filter-btn'+(f==='month'?' active':'');
+  var sel=document.getElementById('monthSelector');
+  if(f==='month'){sel.classList.add('visible');populateMonthSelector();}
+  else sel.classList.remove('visible');
+}
+function populateMonthSelector(){
+  var seen=new Set();
+  movements.forEach(function(m){seen.add(m.date.substring(0,7));});
+  var sorted=[...seen].sort().reverse();
+  var sel=document.getElementById('monthSelector');
+  if(!sorted.length){sel.innerHTML='<option>Sin movimientos</option>';return;}
+  sel.innerHTML=sorted.map(function(ym){
+    var p=ym.split('-');
+    return '<option value="'+ym+'">'+MONTHS[parseInt(p[1])-1]+' '+p[0]+'</option>';
+  }).join('');
+}
+function getExportData(){
+  var data=movements.slice().sort(function(a,b){return a.date.localeCompare(b.date)||a.id-b.id;});
+  var label='Todos los movimientos', dateRange='';
+  if(exportFilter==='month'){
+    var ym=document.getElementById('monthSelector').value;
+    if(ym&&ym.includes('-')){
+      data=data.filter(function(m){return m.date.startsWith(ym);});
+      var p=ym.split('-');
+      label=MONTHS[parseInt(p[1])-1]+' '+p[0];
+      var lastDay=new Date(parseInt(p[0]),parseInt(p[1]),0).getDate();
+      dateRange='01/'+p[1]+'/'+p[0]+' - '+lastDay+'/'+p[1]+'/'+p[0];
+    }
+  } else {
+    if(data.length){
+      var first=data[0].date.split('-').reverse().join('/');
+      var last=data[data.length-1].date.split('-').reverse().join('/');
+      dateRange=first===last?first:first+' - '+last;
+    }
+  }
+  return {data:data,label:label,dateRange:dateRange};
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────
+function exportExcel(){
+  var exp=getExportData();
+  if(!exp.data.length){alert('No hay movimientos para exportar');return;}
+  var total=getTotal(exp.data);
+  var csv='\uFEFF';
+  csv+='HISPANIA CONTROL DE EFECTIVO\n'+exp.label+'\n';
+  if(exp.dateRange) csv+='Periodo: '+exp.dateRange+'\n';
+  csv+='Exportado: '+today.toLocaleDateString('es-ES')+'\n\n';
+  csv+='Fecha;Tipo;Descripcion;Importe (EUR)\n';
+  exp.data.forEach(function(m){
+    var imp=(m.type==='income'?m.amount:-m.amount).toFixed(2).replace('.',',');
+    csv+=fmtDate(m.date)+';'+(m.type==='income'?'Ingreso':'Gasto')+';'+m.description.replace(/;/g,',')+';'+imp+'\n';
+  });
+  csv+='\n;;;'+(total>=0?'+':'')+total.toFixed(2).replace('.',',')+'\n';
+  var filename='Hispania_Efectivo_'+exp.label.replace(/ /g,'_')+'.csv';
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────────────
+function exportPDF(){
+  var exp=getExportData();
+  if(!exp.data.length){alert('No hay movimientos para exportar');return;}
+  var total=getTotal(exp.data);
+  var rows=exp.data.map(function(m,i){
+    var bg=i%2===0?'#f9f9f9':'#fff';
+    var color=m.type==='income'?'#0f6e40':'#c0392b';
+    var sign=m.type==='income'?'+':'&minus;';
+    return '<tr style="background:'+bg+'"><td>'+fmtDate(m.date)+'</td><td style="color:'+color+';font-weight:700">'+(m.type==='income'?'Ingreso':'Gasto')+'</td><td>'+escHtml(m.description)+'</td><td style="text-align:right;color:'+color+';font-weight:700">'+sign+fmtEur(m.amount)+'</td></tr>';
+  }).join('');
+  var ts=total>=0?'+':'&minus;';
+  var absT=Math.abs(total).toLocaleString('es-ES',{minimumFractionDigits:2})+' &euro;';
+  var w=window.open('','_blank','width=820,height=700');
+  if(!w){alert('Permite ventanas emergentes para exportar PDF');return;}
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hispania Efectivo</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#333}.hdr{background:#1a7a4a;color:#fff;padding:18px 22px;border-radius:8px;margin-bottom:18px}.hdr h1{margin:0;font-size:19px;letter-spacing:1px}.hdr p{margin:3px 0 0;font-size:12px;opacity:.85}.badge{display:inline-block;background:rgba(255,255,255,.2);padding:3px 12px;border-radius:20px;font-size:13px;margin-top:7px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a7a4a;color:#fff;padding:8px 10px;text-align:left}th:last-child{text-align:right}td{padding:7px 10px;border-bottom:1px solid #eee}td:last-child{text-align:right}.tfoot td{background:#1a7a4a!important;color:#fff!important;font-weight:700;border:none}.btn{background:#1a7a4a;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:15px;cursor:pointer;margin-top:18px}@media print{.noprint{display:none}}</style></head><body>');
+  w.document.write('<div class="hdr"><h1>HISPANIA CONTROL DE EFECTIVO</h1><p>'+escHtml(exp.label)+(exp.dateRange?' &middot; Periodo: '+escHtml(exp.dateRange):'')+' &middot; Exportado: '+today.toLocaleDateString('es-ES')+'</p><div class="badge">Saldo: '+ts+absT+'</div></div>');
+  w.document.write('<table><tr><th>Fecha</th><th>Tipo</th><th>Descripci&oacute;n</th><th>Importe</th></tr>'+rows+'<tr class="tfoot"><td colspan="3">TOTAL EFECTIVO</td><td>'+ts+absT+'</td></tr></table>');
+  w.document.write('<p class="noprint" style="text-align:center"><button class="btn" onclick="window.print()">&#128438; Imprimir / Guardar PDF</button></p>');
+  w.document.write('<p style="font-size:11px;color:#aaa;margin-top:14px;text-align:center">Hispania Control de Efectivo &middot; Buceo Hispania &middot; Puerto de Mazarr&oacute;n</p></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},700);
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────
+function renderAll(){renderHeader();renderMovements();renderCalendar();}
+
+checkSetup();
+renderAll();
+</script>
+</body>
+</html>
